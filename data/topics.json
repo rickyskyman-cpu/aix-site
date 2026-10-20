@@ -1,0 +1,157 @@
+[
+ {
+  "id": "reasoning",
+  "name": "大模型推理",
+  "what": "通过强化学习与测试时计算（test-time compute）让模型在回答前进行多步思考，可调节“思考强度”。",
+  "why": "显著提升数学、编程和复杂规划任务表现，是 2025—2026 年前沿模型竞争的核心维度。",
+  "who": [
+   "OpenAI（GPT-6 系列）",
+   "Google DeepMind（Gemini 4 Argon）",
+   "Anthropic（Claude 5.5 系列）",
+   "DeepSeek（V4 思考模式）",
+   "阿里通义（Qwen3.8）"
+  ],
+  "maturity": "规模化应用",
+  "maturity_score": 4,
+  "related_news": [
+   "n03",
+   "n05",
+   "n15",
+   "n09"
+  ]
+ },
+ {
+  "id": "multimodal",
+  "name": "多模态",
+  "what": "在同一模型中统一理解和生成文本、图像、音频、视频等多种模态。",
+  "why": "使 AI 能直接处理文档、图表、医学影像、视频等真实世界信息，拓展行业应用面。",
+  "who": [
+   "Google DeepMind",
+   "Meta（Muse Spark Open）",
+   "阿里通义（Qwen3.8-Max）",
+   "月之暗面（Kimi K3）",
+   "中科院自动化所（紫东太初）"
+  ],
+  "maturity": "规模化应用",
+  "maturity_score": 4,
+  "related_news": [
+   "n02",
+   "n09",
+   "n11",
+   "n08"
+  ]
+ },
+ {
+  "id": "embodied",
+  "name": "具身智能",
+  "what": "让 AI 拥有物理“身体”（人形机器人、机械臂、无人车、无人机等），在真实环境中感知、决策与操作。",
+  "why": "被视为 AI 从数字世界走向物理世界的关键，影响制造、物流、家庭服务等行业。",
+  "who": [
+   "Figure AI（Helix VLA）",
+   "NVIDIA（Isaac）",
+   "Tesla（Optimus）",
+   "北京智源研究院",
+   "美团（无人机 / 无人车）"
+  ],
+  "maturity": "试点验证",
+  "maturity_score": 2,
+  "related_news": [
+   "n12"
+  ]
+ },
+ {
+  "id": "agent",
+  "name": "AI Agent（智能体）",
+  "what": "以大模型为“大脑”，可调用工具、操作软件和网页、拆解并持续执行多步任务的 AI 系统。",
+  "why": "从“回答问题”转向“完成工作”，是企业降本增效和软件形态变革的主要方向。",
+  "who": [
+   "OpenAI（Codex）",
+   "Anthropic（Claude Code）",
+   "阿里通义（QwenWork）",
+   "京东（JoyAgent）",
+   "深圳福田区（政务数智员工）"
+  ],
+  "maturity": "早期规模化",
+  "maturity_score": 3,
+  "related_news": [
+   "n05",
+   "n14"
+  ]
+ },
+ {
+  "id": "world-model",
+  "name": "世界模型",
+  "what": "学习物理世界运行规律的生成式模型，可模拟、预测环境状态变化，常用于机器人与自动驾驶仿真训练。",
+  "why": "为具身智能和自动驾驶提供可扩展的“虚拟训练场”，被视为通向更通用智能的路径之一。",
+  "who": [
+   "Google DeepMind",
+   "NVIDIA",
+   "Meta",
+   "高校与科研机构（如 Berkeley BAIR、清华 AIR）"
+  ],
+  "maturity": "研究探索",
+  "maturity_score": 1,
+  "related_news": []
+ },
+ {
+  "id": "ai4s",
+  "name": "AI for Science",
+  "what": "将 AI 用于蛋白质结构、气象预报、材料、数学等科学研究，加速假设生成与实验验证。",
+  "why": "缩短科研周期，已在结构生物学、天气预报等领域产生被同行评审验证的成果。",
+  "who": [
+   "Google DeepMind（AlphaFold 3、Co-Scientist）",
+   "华为云（盘古气象）",
+   "中国气象局（风清/风雷/风顺）",
+   "上海人工智能实验室"
+  ],
+  "maturity": "部分领域规模化",
+  "maturity_score": 3,
+  "related_news": [
+   "n14",
+   "n08"
+  ]
+ },
+ {
+  "id": "open-weights",
+  "name": "开源 / 开放权重模型",
+  "what": "公开模型权重供下载、本地部署和二次训练的大模型。",
+  "why": "降低使用门槛与数据外流风险，推动中国与全球开发者生态，影响商业模型定价。",
+  "who": [
+   "DeepSeek",
+   "阿里通义（Qwen）",
+   "月之暗面（Kimi）",
+   "Meta",
+   "Mistral AI",
+   "AI Singapore（SEA-LION）"
+  ],
+  "maturity": "规模化应用",
+  "maturity_score": 4,
+  "related_news": [
+   "n02",
+   "n11",
+   "n15",
+   "n09"
+  ]
+ },
+ {
+  "id": "safety",
+  "name": "AI 安全与治理",
+  "what": "研究模型对齐、可解释性、滥用防护，以及各国对 AI 的立法与监管框架。",
+  "why": "随着模型自主性提升，安全评估、内容标识与合规成为产品上线的前置条件。",
+  "who": [
+   "Anthropic",
+   "OpenAI",
+   "欧盟 AI Office",
+   "中国国家网信办",
+   "韩国科学技术信息通信部"
+  ],
+  "maturity": "制度建设期",
+  "maturity_score": 3,
+  "related_news": [
+   "n10",
+   "n16",
+   "n18",
+   "n20"
+  ]
+ }
+]

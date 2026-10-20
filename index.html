@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI+X 行业案例网 · 全球 AI 进展与行业落地情报站（原型）</title>
+<meta name="description" content="及时收集全球 AI 技术发展动态、前沿技术与跨地区跨行业的 AI 落地案例，覆盖主要 AI 企业、科研机构与高校。">
+<meta property="og:title" content="AI+X 行业案例网 · 全球 AI 进展与行业落地情报站">
+<meta property="og:description" content="AI 动态快讯 · 技术前沿 · 行业案例库 · 机构与高校 · 地区观察">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0b2a5b">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#/home" aria-label="返回首页">
+      <img src="assets/favicon.svg" alt="" width="30" height="30">
+      <span class="brand-text"><b>AI+X</b> 行业案例网</span>
+      <span class="badge-proto">原型</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="展开导航" aria-expanded="false">☰</button>
+    <nav class="nav" id="nav">
+      <a href="#/home" data-route="home">首页</a>
+      <a href="#/news" data-route="news">AI 动态快讯</a>
+      <a href="#/tech" data-route="tech">技术前沿</a>
+      <a href="#/cases" data-route="cases">行业案例库</a>
+      <a href="#/institutions" data-route="institutions">机构与高校</a>
+      <a href="#/regions" data-route="regions">地区观察</a>
+      <a href="#/about" data-route="about">关于 / 订阅</a>
+    </nav>
+  </div>
+</header>
+
+<main id="app" class="wrap" tabindex="-1">
+  <div class="loading">正在加载数据…</div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <div class="footer-brand"><b>AI+X</b> 行业案例网</div>
+      <p class="muted">全球 AI 技术进展 × 行业落地案例 × 机构与地区观察</p>
+    </div>
+    <div class="footer-note">
+      <p><b>说明：</b>本站为<b>原型演示</b>，内容为样例数据集（<span id="dataStamp">—</span>），每条内容均附原始来源链接，数据以来源原文为准；未在来源中披露的效果数据标注为“未公开”。</p>
+      <p class="muted">可信等级：<span class="cred cred-official">官方发布</span> 指企业/机构官网、政府网站、同行评审论文；<span class="cred cred-media">媒体报道</span> 指第三方媒体报道或转述。</p>
+    </div>
+  </div>
+  <div class="wrap footer-bottom muted">© <span id="year"></span> AI+X 行业案例网（原型） · 静态站点，无后台 · 数据文件位于 /data/*.json</div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

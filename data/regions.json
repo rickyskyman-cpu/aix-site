@@ -1,0 +1,107 @@
+[
+ {
+  "id": "china",
+  "name": "中国",
+  "summary": "政策以“人工智能+”行动为主线，开源大模型与行业落地并进。",
+  "points": [
+   "2025 年 8 月国务院印发《关于深入实施“人工智能+”行动的意见》，提出到 2027 年智能终端、智能体等应用普及率超 70%。",
+   "2026 年相继出台“人工智能+制造”“人工智能+软件”等专项方案，以及拟人化互动服务、科技伦理审查等管理办法。",
+   "DeepSeek、通义千问、Kimi 等开放权重模型迭代密集；智谱、MiniMax 于 2026 年 1 月在港股上市。",
+   "落地集中在政务、金融、能源、制造、医疗等领域（见案例库）。"
+  ],
+  "sources": [
+   {
+    "name": "国务院“人工智能+”意见",
+    "url": "https://www.gov.cn/zhengce/zhengceku/202508/content_7037862.htm"
+   }
+  ]
+ },
+ {
+  "id": "us",
+  "name": "美国",
+  "summary": "前沿闭源模型、算力与资本高度集中，政策侧重创新与基础设施。",
+  "points": [
+   "2025 年 7 月白宫发布《美国 AI 行动计划》，围绕加速创新、建设 AI 基础设施、国际外交与安全三大支柱。",
+   "OpenAI、Anthropic 等头部实验室 2026 年融资规模与估值创纪录。",
+   "Robotaxi（Waymo）、人形机器人（Figure）等物理 AI 进入商业化或试点阶段。"
+  ],
+  "sources": [
+   {
+    "name": "America's AI Action Plan",
+    "url": "https://www.whitehouse.gov/wp-content/uploads/2025/07/Americas-AI-Action-Plan.pdf"
+   }
+  ]
+ },
+ {
+  "id": "europe",
+  "name": "欧洲",
+  "summary": "以《人工智能法》为代表的风险分级监管体系，同时培育本土模型企业。",
+  "points": [
+   "欧盟《人工智能法》2024 年 8 月生效，2026 年 8 月 2 日起多数规则适用并启动执法；附件三高风险规则延至 2027 年 12 月。",
+   "法国 Mistral AI 等本土模型公司获得大额融资。",
+   "工业 AI（西门子）、物流（DHL）、法律（A&O Shearman）、金融（Klarna）等领域落地活跃。"
+  ],
+  "sources": [
+   {
+    "name": "EU AI Act 实施时间表",
+    "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/timeline/timeline-implementation-eu-ai-act"
+   }
+  ]
+ },
+ {
+  "id": "jpkr",
+  "name": "日韩",
+  "summary": "以促进型立法为主，大企业内部规模化应用与本土模型并行。",
+  "points": [
+   "日本 2025 年 5 月通过《人工智能相关技术研究开发及活用推进法》（AI 法），设立 AI 战略本部。",
+   "韩国《人工智能基本法》于 2026 年 1 月 22 日施行。",
+   "松下 Connect 等企业公布内部 AI 助手的量化成效；Naver HyperCLOVA X 用于公共部门。"
+  ],
+  "sources": [
+   {
+    "name": "日本内阁府 AI 法",
+    "url": "https://www8.cao.go.jp/cstp/ai/ai_act/ai_act.html"
+   },
+   {
+    "name": "韩国 AI 基本法施行",
+    "url": "https://www.korea.net/NewsFocus/policies/view?articleId=286183"
+   }
+  ]
+ },
+ {
+  "id": "sea",
+  "name": "东南亚",
+  "summary": "多语言、多文化市场，以国家战略和区域语言模型为特色。",
+  "points": [
+   "新加坡 2023 年发布国家人工智能战略 2.0（NAIS 2.0），愿景为“AI 服务公共利益”。",
+   "AI Singapore 主导的 SEA-LION 为东南亚语言提供开源模型。",
+   "数字经济增长带动电商、金融科技等领域的 AI 需求。"
+  ],
+  "sources": [
+   {
+    "name": "Singapore National AI Strategy",
+    "url": "https://www.smartnation.gov.sg/initiatives/national-ai-strategy/"
+   },
+   {
+    "name": "SEA-LION",
+    "url": "https://docs.sea-lion.ai/"
+   }
+  ]
+ },
+ {
+  "id": "me",
+  "name": "中东",
+  "summary": "主权资本驱动的算力与 AI 基础设施投资，能源行业率先应用。",
+  "points": [
+   "沙特公共投资基金（PIF）2025 年 5 月推出 AI 公司 HUMAIN，覆盖数据中心、云和阿拉伯语大模型。",
+   "沙特阿美发布工业大模型 aramcoMETABRAIN。",
+   "百度萝卜快跑等国际自动驾驶企业在阿布扎比、迪拜开展运营或测试。"
+  ],
+  "sources": [
+   {
+    "name": "PIF 发布 HUMAIN",
+    "url": "https://www.pif.gov.sa/en/news-and-insights/press-releases/2025/hrh-crown-prince-launches-humain-as-global-ai-powerhouse/"
+   }
+  ]
+ }
+]
