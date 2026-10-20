@@ -1,10 +1,9 @@
-/* AI+X 行业案例网 · 静态前端（无依赖） */
+/* AI+X 行业案例网 · 静态前端（仅本地依赖：assets/vendor/echarts，Apache-2.0） */
 (function () {
   'use strict';
   var DATA = {};
   var FILES = ['meta', 'news', 'cases', 'topics', 'institutions', 'regions'];
   var app = document.getElementById('app');
-  var PALETTE = ['#1e5bd8', '#19b4e6', '#0b2a5b', '#7a4ad8', '#12936b', '#c97a10', '#e0457b', '#5b6782', '#2f7bff', '#0d8fae', '#9aa9c9', '#6bc2a1', '#f0a24b', '#8c6be8'];
   var MATURITY_ORDER = ['研究验证', '试点', '规模化', '商业化'];
 
   /* ---------- utils ---------- */
@@ -37,174 +36,167 @@
     return q ? '?' + q : '';
   }
 
-  /* ---------- charts v2 (hand-rolled SVG, no dependencies) ---------- */
-  var CH = ['#1e5bd8', '#19b4e6', '#7a4ad8', '#12936b', '#f0a24b', '#e0457b', '#0d8fae', '#9aa9c9'];
-  var CAT_COLOR = { '模型发布': '#1e5bd8', '产品更新': '#19b4e6', '融资并购': '#f0a24b', '政策法规': '#7a4ad8', '科研突破': '#12936b' };
-  var MAT_COLOR = { '研究验证': '#9aa9c9', '试点': '#19b4e6', '规模化': '#1e5bd8', '商业化': '#0b2a5b' };
-  var gid = 0;
+  /* ---------- design tokens & charts v3 (Apache ECharts, bundled locally) ---------- */
+  var CAT_COLOR = { '模型发布': '#3b82f6', '产品更新': '#22d3ee', '融资并购': '#ffb547', '政策法规': '#a78bfa', '科研突破': '#34d399' };
+  var CAT_CLS = { '模型发布': 'c-model', '产品更新': 'c-product', '融资并购': 'c-fund', '政策法规': 'c-policy', '科研突破': 'c-research' };
+  var MAT_CLS = { '研究验证': 'm-research', '试点': 'm-pilot', '规模化': 'm-scale', '商业化': 'm-commercial' };
+  function hashIdx(s, n) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h % n; }
+  function catCls(c) { return CAT_CLS[c] || 'c-other'; }
+  function indCls(i) { return 'ind-' + hashIdx(i, 8); }
+  function matCls(m) { return MAT_CLS[m] || ''; }
   function pct(a, b) { return b ? Math.round(a * 1000 / b) / 10 : 0; }
   function topN(rows, n) {
     if (rows.length <= n) return rows;
     var head = rows.slice(0, n - 1), rest = rows.slice(n - 1).reduce(function (s, r) { return s + r[1]; }, 0);
     return head.concat([['其他', rest, true]]);
   }
-  function niceTicks(max, count) {
-    max = Math.max(max, 1);
-    var raw = max / (count || 4), mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), n = raw / mag;
-    var step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
-    step = Math.max(1, Math.round(step));
-    var top = Math.ceil(max / step) * step, t = [];
-    for (var v = 0; v <= top; v += step) t.push(v);
-    return t;
-  }
   function tipAttr(text) { return ' data-tip="' + esc(text) + '"'; }
 
-  // horizontal bars, sorted, top-N + 其他
-  function hbar(rows, opt) {
-    opt = opt || {};
-    var total = opt.total || rows.reduce(function (s, r) { return s + r[1]; }, 0);
-    rows = topN(rows, opt.top || 8);
-    var id = 'hb' + (++gid), w = opt.w || 460, left = opt.left || 92, right = 34, rh = 26, top = 6, plotW = w - left - right;
-    var h = top + rows.length * rh + 26;
-    var ticks = niceTicks(Math.max.apply(null, rows.map(function (r) { return r[1]; })), 4), max = ticks[ticks.length - 1];
-    var c1 = opt.c1 || '#1e5bd8', c2 = opt.c2 || '#19b4e6';
-    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(opt.label || '') + '">' +
-      '<defs><linearGradient id="' + id + '" x1="0" x2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs>';
-    ticks.forEach(function (t) {
-      var x = left + plotW * t / max;
-      s += '<line x1="' + x + '" y1="' + top + '" x2="' + x + '" y2="' + (h - 22) + '" class="grid"/>' +
-        '<text x="' + x + '" y="' + (h - 8) + '" text-anchor="middle" class="axis">' + t + '</text>';
+  var CHARTS = [];
+  var echartsPromise = null;
+  function loadECharts() {
+    if (window.echarts) return Promise.resolve(window.echarts);
+    if (echartsPromise) return echartsPromise;
+    echartsPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'assets/vendor/echarts/echarts.min.js';
+      s.onload = function () { resolve(window.echarts); };
+      s.onerror = function () { echartsPromise = null; reject(new Error('ECharts 加载失败')); };
+      document.head.appendChild(s);
     });
-    rows.forEach(function (r, i) {
-      var y = top + i * rh, bw = Math.max(plotW * r[1] / max, 3), share = pct(r[1], total);
-      s += '<text x="' + (left - 8) + '" y="' + (y + 16) + '" text-anchor="end" class="lbl">' + esc(r[0]) + '</text>' +
-        '<g' + tipAttr(r[0] + '：' + r[1] + ' ' + (opt.unit || '') + '（' + share + '%）' + (r[2] ? '，合并长尾' : '')) + '>' +
-        '<rect x="' + left + '" y="' + (y + 4) + '" width="' + plotW + '" height="' + (rh - 9) + '" rx="5" class="track"/>' +
-        '<rect class="bar-anim" style="animation-delay:' + (i * 40) + 'ms" x="' + left + '" y="' + (y + 4) + '" width="' + bw.toFixed(1) + '" height="' + (rh - 9) + '" rx="5" fill="' + (r[2] ? '#c3cde3' : 'url(#' + id + ')') + '"/></g>' +
-        '<text x="' + (left + bw + 6).toFixed(1) + '" y="' + (y + 16) + '" class="val">' + r[1] + '</text>';
-    });
-    return s + '</svg>';
+    return echartsPromise;
+  }
+  function disposeCharts() { CHARTS.forEach(function (c) { try { c.dispose(); } catch (e) {} }); CHARTS = []; }
+  window.addEventListener('resize', function () { CHARTS.forEach(function (c) { c.resize(); }); });
+
+  var TXT = '#9fb0d0', TXT_HI = '#e6edff', GRID = 'rgba(148,170,220,.12)';
+  function lg(echarts, a, b, horizontal) { return new echarts.graphic.LinearGradient(0, horizontal ? 0 : 1, horizontal ? 1 : 0, 0, [{ offset: 0, color: a }, { offset: 1, color: b }]); }
+  var TOOLTIP = {
+    backgroundColor: 'rgba(8,17,40,.92)', borderColor: 'rgba(96,165,250,.45)', borderWidth: 1, padding: [10, 12],
+    textStyle: { color: '#e6edff', fontSize: 12.5 }, extraCssText: 'border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);backdrop-filter:blur(6px);'
+  };
+  function tipRow(color, name, val, extra) {
+    return '<div style="display:flex;align-items:center;gap:8px;min-width:150px"><span style="width:9px;height:9px;border-radius:3px;background:' + color + '"></span><span style="flex:1">' + esc(name) + '</span><b style="font-size:14px">' + val + '</b>' + (extra ? '<span style="color:#9fb0d0;margin-left:6px">' + extra + '</span>' : '') + '</div>';
   }
 
-  // donut with center total + legend (with %)
-  function donutV2(rows, opt) {
-    opt = opt || {};
-    rows = topN(rows, opt.top || 7);
-    var total = rows.reduce(function (s, r) { return s + r[1]; }, 0) || 1;
-    var R = 62, C = 2 * Math.PI * R, off = 0;
-    var s = '<svg viewBox="0 0 170 170" class="donut" role="img" aria-label="' + esc(opt.label || '') + '"><g transform="rotate(-90 85 85)">' +
-      '<circle cx="85" cy="85" r="' + R + '" fill="none" stroke="#eef2fa" stroke-width="22"/>';
-    rows.forEach(function (r, i) {
-      var len = C * r[1] / total, col = r[2] ? '#c3cde3' : CH[i % CH.length];
-      s += '<circle class="seg" style="animation-delay:' + (i * 60) + 'ms" cx="85" cy="85" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="22" stroke-dasharray="' + Math.max(len - 1.5, 0.5).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"' +
-        tipAttr(r[0] + '：' + r[1] + ' ' + (opt.unit || '') + '（' + pct(r[1], total) + '%）') + '/>';
-      off += len;
+  function chartIndustry(echarts, el, cases) {
+    var rows = topN(countBy(cases, function (c) { return c.industry; }), 10).reverse();
+    var total = cases.length, ch = echarts.init(el, null, { renderer: 'canvas' });
+    ch.setOption({
+      animationDuration: 1100, animationEasing: 'cubicOut',
+      grid: { left: 8, right: 46, top: 6, bottom: 6, containLabel: true },
+      tooltip: Object.assign({}, TOOLTIP, { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(96,165,250,.08)' } },
+        formatter: function (p) { var d = p[0]; return '<div style="color:#9fb0d0;margin-bottom:4px">案例行业分布</div>' + tipRow('#22d3ee', d.name, d.value + ' 个', pct(d.value, total) + '%') + (d.name === '其他' ? '<div style="color:#9fb0d0;margin-top:4px;font-size:11.5px">合并长尾行业</div>' : ''); } }),
+      xAxis: { type: 'value', splitLine: { lineStyle: { color: GRID, type: 'dashed' } }, axisLabel: { color: TXT, fontSize: 11 }, minInterval: 1 },
+      yAxis: { type: 'category', data: rows.map(function (r) { return r[0]; }), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { color: TXT_HI, fontSize: 12.5 } },
+      series: [{
+        type: 'bar', barWidth: 13, showBackground: true, backgroundStyle: { color: 'rgba(148,170,220,.07)', borderRadius: 7 },
+        data: rows.map(function (r) {
+          return { value: r[1], itemStyle: r[2] ? { color: 'rgba(159,176,208,.45)', borderRadius: 7 } : { color: lg(echarts, '#2563eb', '#22d3ee', true), borderRadius: 7, shadowBlur: 12, shadowColor: 'rgba(34,211,238,.45)' } };
+        }),
+        label: { show: true, position: 'right', color: TXT_HI, fontWeight: 700, fontSize: 12, formatter: function (p) { return p.value + '  ' + pct(p.value, total) + '%'; } },
+        emphasis: { itemStyle: { shadowBlur: 22, shadowColor: 'rgba(34,211,238,.8)' } }
+      }]
     });
-    s += '</g><text x="85" y="84" text-anchor="middle" class="d-total">' + total + '</text><text x="85" y="103" text-anchor="middle" class="axis">' + esc(opt.center || '') + '</text></svg>';
-    var lg = '<ul class="d-legend">' + rows.map(function (r, i) {
-      return '<li' + tipAttr(r[0] + '：' + r[1] + '（' + pct(r[1], total) + '%）') + '><i style="background:' + (r[2] ? '#c3cde3' : CH[i % CH.length]) + '"></i><span>' + esc(r[0]) + '</span><b>' + r[1] + '</b><em>' + pct(r[1], total) + '%</em></li>';
-    }).join('') + '</ul>';
-    return '<div class="donut-wrap">' + s + lg + '</div>';
+    return ch;
   }
 
-  // stacked monthly columns by news category
-  function stackedMonths(items, opt) {
-    opt = opt || {};
-    var m = {}, cats = Object.keys(CAT_COLOR);
-    items.forEach(function (n) { var k = n.date.slice(0, 7); m[k] = m[k] || {}; m[k][n.category] = (m[k][n.category] || 0) + 1; if (cats.indexOf(n.category) < 0) cats.push(n.category); });
-    var keys = Object.keys(m).sort(); if (!keys.length) return '';
-    var all = [], y = +keys[0].slice(0, 4), mo = +keys[0].slice(5, 7), last = keys[keys.length - 1];
-    while (true) { var k = y + '-' + (mo < 10 ? '0' : '') + mo; all.push(k); if (k >= last || all.length > 60) break; mo++; if (mo > 12) { mo = 1; y++; } }
-    var totals = all.map(function (k) { var t = 0; for (var c in (m[k] || {})) t += m[k][c]; return t; });
-    var ticks = niceTicks(Math.max.apply(null, totals), 4), max = ticks[ticks.length - 1];
-    var w = 520, h = 200, left = 28, right = 8, top = 14, bottom = 26, plotH = h - top - bottom, plotW = w - left - right, bw = plotW / all.length;
-    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(opt.label || '') + '">';
-    ticks.forEach(function (t) {
-      var yy = top + plotH - plotH * t / max;
-      s += '<line x1="' + left + '" y1="' + yy + '" x2="' + (w - right) + '" y2="' + yy + '" class="grid"/><text x="' + (left - 6) + '" y="' + (yy + 3.5) + '" text-anchor="end" class="axis">' + t + '</text>';
+  function chartRegion(echarts, el, cases) {
+    var rows = countBy(cases, function (c) { return c.region; }), total = cases.length;
+    var cols = [['#2563eb', '#60a5fa'], ['#0891b2', '#22d3ee'], ['#7c3aed', '#a78bfa'], ['#059669', '#34d399'], ['#d97706', '#ffb547'], ['#db2777', '#f472b6'], ['#475569', '#94a3b8'], ['#0e7490', '#67e8f9']];
+    var ch = echarts.init(el);
+    ch.setOption({
+      animationDuration: 1300, animationEasing: 'cubicOut',
+      tooltip: Object.assign({}, TOOLTIP, { trigger: 'item', formatter: function (p) { return '<div style="color:#9fb0d0;margin-bottom:4px">案例地区分布</div>' + tipRow(p.color.colorStops ? p.color.colorStops[1].color : p.color, p.name, p.value + ' 个', p.percent + '%'); } }),
+      legend: { orient: 'vertical', right: 4, top: 'middle', icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: 11, textStyle: { color: TXT_HI, fontSize: 12 },
+        formatter: function (n) { var r = rows.filter(function (x) { return x[0] === n; })[0]; return n + '  ' + (r ? r[1] : '') + '  ' + (r ? pct(r[1], total) + '%' : ''); } },
+      graphic: [{ type: 'text', left: '30%', top: '44%', style: { text: String(total), fill: '#fff', fontSize: 30, fontWeight: 800, textAlign: 'center' } },
+                { type: 'text', left: '30%', top: '58%', style: { text: '个案例', fill: TXT, fontSize: 12, textAlign: 'center' } }],
+      series: [
+        { type: 'pie', radius: ['30%', '33%'], center: ['33%', '52%'], silent: true, label: { show: false }, data: [{ value: 1, itemStyle: { color: 'rgba(96,165,250,.25)' } }] },
+        { type: 'pie', roseType: 'radius', radius: ['38%', '80%'], center: ['33%', '52%'], padAngle: 2,
+          itemStyle: { borderRadius: 6, borderColor: '#0b1838', borderWidth: 2, shadowBlur: 16, shadowColor: 'rgba(37,99,235,.35)' },
+          label: { show: false }, labelLine: { show: false },
+          emphasis: { scale: true, scaleSize: 8, itemStyle: { shadowBlur: 28, shadowColor: 'rgba(34,211,238,.7)' } },
+          data: rows.map(function (r, i) { var c = cols[i % cols.length]; return { name: r[0], value: r[1], itemStyle: { color: lg(echarts, c[0], c[1]) } }; }) }
+      ]
     });
-    all.forEach(function (k, i) {
-      var x = left + i * bw + bw * 0.2, cw = bw * 0.6, acc = 0, d = m[k] || {};
-      s += '<g class="col-anim" style="animation-delay:' + (i * 30) + 'ms">';
-      cats.forEach(function (c) {
-        if (!d[c]) return;
-        var hh = plotH * d[c] / max, yy = top + plotH - plotH * (acc + d[c]) / max;
-        s += '<rect x="' + x.toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + Math.max(hh - 1, 1).toFixed(1) + '" rx="2.5" fill="' + (CAT_COLOR[c] || '#9aa9c9') + '"' + tipAttr(k + ' · ' + c + '：' + d[c] + ' 条（当月共 ' + totals[i] + ' 条）') + '/>';
-        acc += d[c];
-      });
-      s += '</g>';
-      if (totals[i]) s += '<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (top + plotH - plotH * totals[i] / max - 4).toFixed(1) + '" text-anchor="middle" class="val sm">' + totals[i] + '</text>';
-      var every = all.length > 12 ? 2 : 1;
-      if (i % every === 0 || i === all.length - 1) s += '<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (h - 9) + '" text-anchor="middle" class="axis">' + k.slice(2).replace('-', '.') + '</text>';
-    });
-    s += '<line x1="' + left + '" y1="' + (top + plotH) + '" x2="' + (w - right) + '" y2="' + (top + plotH) + '" class="axis-line"/></svg>';
-    var lg = '<div class="legend">' + cats.filter(function (c) { return items.some(function (n) { return n.category === c; }); }).map(function (c) {
-      return '<span><i style="background:' + (CAT_COLOR[c] || '#9aa9c9') + '"></i>' + esc(c) + ' ' + items.filter(function (n) { return n.category === c; }).length + '</span>';
-    }).join('') + '</div>';
-    return s + lg;
+    return ch;
   }
 
-  // 100% stacked proportion bars
-  function propBars(groups) {
-    return groups.map(function (g) {
-      var total = g.rows.reduce(function (s, r) { return s + r[1]; }, 0) || 1;
-      return '<div class="prop"><div class="prop-head"><span>' + esc(g.title) + '</span><span class="muted">' + total + ' ' + esc(g.unit || '') + '</span></div><div class="prop-bar">' +
-        g.rows.filter(function (r) { return r[1]; }).map(function (r, i) {
-          var p = pct(r[1], total);
-          return '<span class="prop-seg" style="width:' + p + '%;background:' + (g.colors[r[0]] || CH[i % CH.length]) + ';animation-delay:' + (i * 80) + 'ms"' + tipAttr(g.title + ' · ' + r[0] + '：' + r[1] + '（' + p + '%）') + '>' + (p >= 12 ? p + '%' : '') + '</span>';
-        }).join('') + '</div><div class="legend">' + g.rows.map(function (r, i) {
-          return '<span><i style="background:' + (g.colors[r[0]] || CH[i % CH.length]) + '"></i>' + esc(r[0]) + ' ' + r[1] + '</span>';
-        }).join('') + '</div></div>';
-    }).join('');
+  function chartTrend(echarts, el, news) {
+    var cats = Object.keys(CAT_COLOR).filter(function (c) { return news.some(function (n) { return n.category === c; }); });
+    var m = {}; news.forEach(function (n) { var k = n.date.slice(0, 7); m[k] = m[k] || {}; m[k][n.category] = (m[k][n.category] || 0) + 1; });
+    var keys = Object.keys(m).sort(), months = [], y = +keys[0].slice(0, 4), mo = +keys[0].slice(5, 7), last = keys[keys.length - 1];
+    while (true) { var k = y + '-' + (mo < 10 ? '0' : '') + mo; months.push(k); if (k >= last || months.length > 60) break; mo++; if (mo > 12) { mo = 1; y++; } }
+    var totals = months.map(function (k) { var t = 0; for (var c in (m[k] || {})) t += m[k][c]; return t; });
+    var ch = echarts.init(el);
+    var series = cats.map(function (c, i) {
+      return { name: c, type: 'bar', stack: 'n', barWidth: '46%', emphasis: { focus: 'series' },
+        itemStyle: { color: lg(echarts, echarts.color.modifyAlpha(CAT_COLOR[c], .55), CAT_COLOR[c]), borderRadius: i === cats.length - 1 ? [5, 5, 0, 0] : 0, shadowBlur: 8, shadowColor: echarts.color.modifyAlpha(CAT_COLOR[c], .35) },
+        data: months.map(function (k) { return (m[k] && m[k][c]) || 0; }) };
+    });
+    series.push({ name: '月度合计', type: 'line', smooth: .35, symbol: 'circle', symbolSize: 7, z: 10, data: totals,
+      lineStyle: { width: 2.5, color: '#ffb547', shadowBlur: 12, shadowColor: 'rgba(255,181,71,.7)' }, itemStyle: { color: '#ffb547', borderColor: '#0b1838', borderWidth: 2 },
+      areaStyle: { color: lg(echarts, 'rgba(255,181,71,0)', 'rgba(255,181,71,.22)') },
+      label: { show: true, position: 'top', color: '#ffd59a', fontSize: 11, fontWeight: 700, formatter: function (p) { return p.value || ''; } } });
+    ch.setOption({
+      animationDuration: 1200, animationEasing: 'cubicOut',
+      color: cats.map(function (c) { return CAT_COLOR[c]; }).concat(['#ffb547']),
+      grid: { left: 8, right: 14, top: el.clientWidth < 520 ? 76 : 50, bottom: 8, containLabel: true },
+      legend: { top: 0, left: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 10, itemGap: el.clientWidth < 520 ? 10 : 14, textStyle: { color: TXT_HI, fontSize: 12 } },
+      tooltip: Object.assign({}, TOOLTIP, { trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(96,165,250,.08)' } },
+        formatter: function (ps) {
+          var head = '<div style="color:#9fb0d0;margin-bottom:6px">' + ps[0].axisValue + ' · 快讯</div>';
+          return head + ps.filter(function (p) { return p.seriesName !== '月度合计' && p.value; }).map(function (p) { return tipRow(CAT_COLOR[p.seriesName], p.seriesName, p.value + ' 条'); }).join('') +
+            '<div style="border-top:1px solid rgba(148,170,220,.2);margin-top:6px;padding-top:6px">' + tipRow('#ffb547', '月度合计', totals[ps[0].dataIndex] + ' 条') + '</div>';
+        } }),
+      xAxis: { type: 'category', data: months.map(function (k) { return k.slice(2).replace('-', '.'); }), axisTick: { show: false }, axisLine: { lineStyle: { color: 'rgba(148,170,220,.25)' } }, axisLabel: { color: TXT, fontSize: 11 } },
+      yAxis: { type: 'value', minInterval: 1, splitLine: { lineStyle: { color: GRID, type: 'dashed' } }, axisLabel: { color: TXT, fontSize: 11 } },
+      series: series
+    });
+    return ch;
   }
 
-  function radarV2(topics) {
-    var n = topics.length, cx = 210, cy = 142, R = 100, id = 'rd' + (++gid);
-    var s = '<svg viewBox="0 0 420 290" role="img" aria-label="技术成熟度雷达图"><defs><radialGradient id="' + id + '"><stop offset="0" stop-color="#19b4e6" stop-opacity=".45"/><stop offset="1" stop-color="#1e5bd8" stop-opacity=".22"/></radialGradient></defs>';
-    function pt(i, v) { var a = -Math.PI / 2 + 2 * Math.PI * i / n; return [cx + R * v * Math.cos(a), cy + R * v * Math.sin(a)]; }
-    for (var lv = 1; lv <= 5; lv++) {
-      var ring = []; for (var i = 0; i < n; i++) ring.push(pt(i, lv / 5).map(function (x) { return x.toFixed(1); }).join(','));
-      s += '<polygon points="' + ring.join(' ') + '" fill="' + (lv % 2 ? '#f7f9fd' : '#fff') + '" stroke="#e1e7f3"/>';
-    }
-    for (var j = 0; j < n; j++) { var e = pt(j, 1); s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0].toFixed(1) + '" y2="' + e[1].toFixed(1) + '" stroke="#e1e7f3"/>'; }
-    for (var l = 1; l <= 5; l++) s += '<text x="' + (cx + 3) + '" y="' + (cy - R * l / 5 + 3) + '" class="axis sm">' + l + '</text>';
-    var poly = topics.map(function (t, i) { return pt(i, (t.maturity_score || 0) / 5).map(function (x) { return x.toFixed(1); }).join(','); });
-    s += '<polygon class="radar-anim" points="' + poly.join(' ') + '" fill="url(#' + id + ')" stroke="#1e5bd8" stroke-width="2" stroke-linejoin="round"/>';
-    topics.forEach(function (t, i) {
-      var p = pt(i, 1.17), anchor = Math.abs(p[0] - cx) < 12 ? 'middle' : (p[0] > cx ? 'start' : 'end');
-      s += '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '" class="lbl">' + esc(t.name.replace(/（.*?）/, '')) + '</text>';
-      var d = pt(i, (t.maturity_score || 0) / 5);
-      s += '<circle cx="' + d[0].toFixed(1) + '" cy="' + d[1].toFixed(1) + '" r="4.5" fill="#fff" stroke="#1e5bd8" stroke-width="2"' + tipAttr(t.name + '：' + t.maturity + '（' + t.maturity_score + '/5，编辑评估）') + '/>';
+  function chartRadar(echarts, el, topics) {
+    var ch = echarts.init(el);
+    ch.setOption({
+      animationDuration: 1400, animationEasing: 'elasticOut',
+      tooltip: Object.assign({}, TOOLTIP, { trigger: 'item', formatter: function () {
+        return '<div style="color:#9fb0d0;margin-bottom:6px">技术成熟度（编辑评估 1–5）</div>' + topics.map(function (t) { return tipRow('#22d3ee', t.name, t.maturity_score, t.maturity); }).join(''); } }),
+      radar: {
+        center: ['50%', '54%'], radius: el.clientWidth < 520 ? '52%' : '66%', splitNumber: 5, shape: 'polygon',
+        indicator: topics.map(function (t) { return { name: t.name.replace(/（.*?）/, ''), max: 5 }; }),
+        axisName: { color: TXT_HI, fontSize: 12, padding: [2, 4], formatter: function (n) { if (el.clientWidth >= 520) return n; return n.replace(' for ', '\nfor ').split(' / ').map(function (p) { return /^[\u4e00-\u9fa5]{6,}$/.test(p) ? p.slice(0, 4) + '\n' + p.slice(4) : p; }).join('/\n'); } },
+        splitArea: { areaStyle: { color: ['rgba(37,99,235,.02)', 'rgba(37,99,235,.06)', 'rgba(37,99,235,.10)', 'rgba(37,99,235,.14)', 'rgba(37,99,235,.18)'] } },
+        splitLine: { lineStyle: { color: 'rgba(96,165,250,.22)' } }, axisLine: { lineStyle: { color: 'rgba(96,165,250,.22)' } }
+      },
+      series: [{ type: 'radar', symbol: 'circle', symbolSize: 8,
+        data: [{ value: topics.map(function (t) { return t.maturity_score || 0; }), name: '成熟度',
+          lineStyle: { width: 2.5, color: '#22d3ee', shadowBlur: 18, shadowColor: 'rgba(34,211,238,.9)' },
+          itemStyle: { color: '#0b1838', borderColor: '#22d3ee', borderWidth: 2.5, shadowBlur: 10, shadowColor: 'rgba(34,211,238,.9)' },
+          areaStyle: { color: new echarts.graphic.RadialGradient(.5, .5, .7, [{ offset: 0, color: 'rgba(34,211,238,.10)' }, { offset: 1, color: 'rgba(59,130,246,.55)' }]) },
+          label: { show: true, color: '#e6edff', fontSize: 11, fontWeight: 700, distance: 6 } }] }]
     });
-    return s + '</svg>';
+    return ch;
   }
 
   function initTooltip() {
     var tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip);
-    function show(el, x, y) { tip.textContent = el.getAttribute('data-tip'); tip.style.opacity = 1; move(x, y); }
-    function move(x, y) {
-      var w = tip.offsetWidth, vw = document.documentElement.clientWidth;
-      tip.style.left = Math.min(Math.max(8, x - w / 2), vw - w - 8) + 'px'; tip.style.top = (y - tip.offsetHeight - 12) + 'px';
-    }
-    document.addEventListener('mousemove', function (e) {
-      var el = e.target.closest && e.target.closest('[data-tip]');
-      if (el) show(el, e.clientX, e.clientY); else tip.style.opacity = 0;
-    });
-    document.addEventListener('click', function (e) {
-      var el = e.target.closest && e.target.closest('[data-tip]');
-      if (el) show(el, e.clientX, e.clientY); else tip.style.opacity = 0;
-    });
+    function show(el, x, y) { tip.textContent = el.getAttribute('data-tip'); tip.style.opacity = 1; var w = tip.offsetWidth, vw = document.documentElement.clientWidth; tip.style.left = Math.min(Math.max(8, x - w / 2), vw - w - 8) + 'px'; tip.style.top = (y - tip.offsetHeight - 12) + 'px'; }
+    function h(e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else tip.style.opacity = 0; }
+    document.addEventListener('mousemove', h); document.addEventListener('click', h);
     window.addEventListener('scroll', function () { tip.style.opacity = 0; }, { passive: true });
   }
   /* ---------- components ---------- */
   function newsItem(n) {
     return '<div class="news-item"><div class="date">' + esc(n.date) + '</div><div>' +
       '<h3>' + esc(n.title) + '</h3><p>' + esc(n.summary) + '</p>' +
-      '<div class="news-meta"><span class="tag cat">' + esc(n.category) + '</span><span class="tag region">' + esc(n.region) + '</span>' + cred(n.credibility) + ext(n.source_url, '来源：' + n.source_name) + '</div></div></div>';
+      '<div class="news-meta"><span class="tag ' + catCls(n.category) + '">' + esc(n.category) + '</span><span class="tag region">' + esc(n.region) + '</span>' + cred(n.credibility) + ext(n.source_url, '来源：' + n.source_name) + '</div></div></div>';
   }
   function caseCard(c) {
     return '<article class="card hover case-card">' +
-      '<div class="tags"><span class="tag cat">' + esc(c.industry) + '</span><span class="tag region">' + esc(c.region) + ' · ' + esc(c.country) + '</span><span class="tag mat">' + esc(c.maturity) + '</span></div>' +
+      '<div class="tags"><span class="tag ' + indCls(c.industry) + '">' + esc(c.industry) + '</span><span class="tag region">' + esc(c.region) + ' · ' + esc(c.country) + '</span><span class="tag mat ' + matCls(c.maturity) + '">' + esc(c.maturity) + '</span></div>' +
       '<h3><a href="#/case/' + esc(c.id) + '">' + esc(c.title) + '</a></h3>' +
       '<div class="org">' + esc(c.org) + ' · ' + esc(c.date) + '</div>' +
       '<div class="tags">' + c.tech.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>' +
@@ -221,32 +213,36 @@
     var latestCases = cases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).slice(0, 8);
     var industries = uniq(cases.map(function (c) { return c.industry; })).length;
     var updated = (DATA.meta && DATA.meta.updated) || news[0].date;
-
-    // KPIs (all derived from data/*.json)
     var countries = uniq(cases.map(function (c) { return c.country; })).length;
     var regions = uniq(cases.map(function (c) { return c.region; })).length;
     var official = cases.filter(function (c) { return c.credibility === '官方发布'; }).length;
     var disclosed = cases.filter(function (c) { return c.effect && c.effect !== '未公开'; }).length;
     var scaled = cases.filter(function (c) { return c.maturity === '规模化' || c.maturity === '商业化'; }).length;
-    var cn = cases.filter(function (c) { return c.region === '中国'; }).length;
-    var d0 = new Date(updated + 'T00:00:00Z'), recent = news.filter(function (n) { return (d0 - new Date(n.date + 'T00:00:00Z')) / 864e5 <= 90; }).length;
-    function kpi(v, label, sub) { return '<div class="kpi"><b>' + v + '</b><span>' + esc(label) + '</span>' + (sub ? '<em>' + esc(sub) + '</em>' : '') + '</div>'; }
+    function kpi(v, unit, label, sub, ratio) {
+      return '<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value">' + v + '<small>' + esc(unit) + '</small></div>' +
+        (ratio != null ? '<div class="kpi-bar"><i style="width:' + ratio + '%"></i></div>' : '') + '<div class="kpi-sub">' + esc(sub) + '</div></div>';
+    }
+    function chartCard(id, title, sub, note) {
+      return '<figure class="chart-card"><figcaption class="cc-head"><div><h3>' + esc(title) + '</h3><p>' + esc(sub) + '</p></div></figcaption>' +
+        '<div class="echart" id="' + id + '" role="img" aria-label="' + esc(title) + '"></div><div class="cc-note">数据来源：' + esc(note) + '</div></figure>';
+    }
 
-    var html = '<section class="hero hero-v2"><div class="hero-main"><div class="eyebrow">全球 AI 情报 · 数据更新于 ' + esc(updated) + '</div>' +
-      '<h1>全球 AI 进展 × 行业落地案例情报站</h1>' +
-      '<p>回答“哪项 AI 技术、在哪个地区、哪个行业、被谁、怎么用、效果如何”。每条内容均附原始来源。</p>' +
-      '<form class="hero-search" id="heroSearch"><input id="heroQ" placeholder="搜索案例：金融 客服、自动驾驶、DeepSeek、病理…" aria-label="搜索案例"><button class="btn" type="submit">搜索</button></form></div>' +
+    var html = '<section class="band band-dark hero-v3"><div class="hero-grid"><div class="hero-main">' +
+      '<div class="eyebrow"><span class="live"></span>全球 AI 情报 · 数据更新于 ' + esc(updated) + '</div>' +
+      '<h1>全球 AI 进展 <span class="grad">×</span> 行业落地案例情报站</h1>' +
+      '<p class="lead">回答“哪项 AI 技术、在哪个地区、哪个行业、被谁、怎么用、效果如何”。每条内容均附原始来源，区分官方发布与媒体报道。</p>' +
+      '<form class="hero-search" id="heroSearch" role="search"><input id="heroQ" placeholder="搜索案例：金融 客服、自动驾驶、DeepSeek、病理…" aria-label="搜索案例"><button class="btn btn-accent" type="submit">搜索案例</button></form>' +
+      '<div class="hero-links"><a href="#/news">最新快讯</a><a href="#/tech">技术前沿</a><a href="#/regions">地区观察</a></div></div>' +
       '<div class="hero-stats">' +
       '<a class="stat" href="#/cases"><b>' + cases.length + '</b><span>行业案例</span></a>' +
       '<a class="stat" href="#/news"><b>' + news.length + '</b><span>动态快讯</span></a>' +
       '<a class="stat" href="#/institutions"><b>' + DATA.institutions.length + '</b><span>机构与高校</span></a>' +
-      '<a class="stat" href="#/cases"><b>' + industries + '</b><span>覆盖行业</span></a></div></section>';
+      '<a class="stat" href="#/cases"><b>' + industries + '</b><span>覆盖行业</span></a></div></div></section>';
 
-    // 今日要闻 + 热点技术
     html += '<div class="home-row section"><section class="card pad-sm"><div class="section-head"><h2>今日要闻</h2><a href="#/news">全部快讯 →</a></div><ul class="news-compact">' +
       news.slice(0, 7).map(function (n) {
-        return '<li><span class="nc-date">' + esc(n.date.slice(5)) + '</span><div class="nc-body"><a class="nc-title" href="' + safeUrl(n.source_url) + '" target="_blank" rel="noopener noreferrer" title="' + esc(n.summary) + '">' + esc(n.title) + '</a>' +
-          '<div class="nc-meta"><span class="dot" style="background:' + (CAT_COLOR[n.category] || '#9aa9c9') + '"></span>' + esc(n.category) + ' · ' + esc(n.region) + ' · ' + esc(n.source_name) + ' ' + cred(n.credibility) + '</div></div></li>';
+        return '<li><span class="nc-date">' + esc(n.date.slice(5).replace('-', '.')) + '</span><div class="nc-body"><a class="nc-title" href="' + safeUrl(n.source_url) + '" target="_blank" rel="noopener noreferrer" title="' + esc(n.summary) + '">' + esc(n.title) + '</a>' +
+          '<div class="nc-meta"><span class="tag xs ' + catCls(n.category) + '">' + esc(n.category) + '</span>' + esc(n.region) + ' · ' + esc(n.source_name) + ' ' + cred(n.credibility) + '</div></div></li>';
       }).join('') + '</ul></section>' +
       '<section class="card pad-sm"><div class="section-head"><h2>热点技术</h2><a href="#/tech">技术前沿 →</a></div><ul class="topic-compact">' +
       topics.map(function (t) {
@@ -254,42 +250,40 @@
         return '<li><a href="#/tech?t=' + esc(t.id) + '"><span class="tc-name">' + esc(t.name) + '</span><span class="tc-what">' + esc(t.what) + '</span></a><span class="tc-mat"' + tipAttr('成熟度（编辑评估）：' + t.maturity + ' ' + t.maturity_score + '/5') + '><span class="meter">' + m + '</span><em>' + esc(t.maturity) + '</em></span></li>';
       }).join('') + '</ul></section></div>';
 
-    // 最新案例
     html += '<section class="section"><div class="section-head"><h2>最新案例</h2><a href="#/cases">进入案例库（' + cases.length + '）→</a></div><div class="grid g4 case-compact">' +
       latestCases.map(function (c) {
-        return '<a class="card hover cc" href="#/case/' + esc(c.id) + '"><div class="tags"><span class="tag cat">' + esc(c.industry) + '</span><span class="tag region">' + esc(c.region) + '</span></div>' +
+        return '<a class="card hover cc" href="#/case/' + esc(c.id) + '"><div class="tags"><span class="tag ' + indCls(c.industry) + '">' + esc(c.industry) + '</span><span class="tag region">' + esc(c.region) + '</span></div>' +
           '<h3>' + esc(c.title) + '</h3><div class="cc-org">' + esc(c.org) + ' · ' + esc(c.date) + '</div>' +
-          '<p class="cc-effect">' + esc(c.effect) + '</p><div class="cc-foot">' + cred(c.credibility) + '<span class="tag mat">' + esc(c.maturity) + '</span></div></a>';
+          '<p class="cc-effect">' + esc(c.effect) + '</p><div class="cc-foot">' + cred(c.credibility) + '<span class="tag mat ' + matCls(c.maturity) + '">' + esc(c.maturity) + '</span></div></a>';
       }).join('') + '</div></section>';
 
-    // 数据看板
-    var byIndustry = countBy(cases, function (c) { return c.industry; });
-    var byRegion = countBy(cases, function (c) { return c.region; });
-    var byTech = countBy(cases, function (c) { return c.tech; });
-    var byMat = MATURITY_ORDER.map(function (m) { return [m, cases.filter(function (c) { return c.maturity === m; }).length]; });
-    var byCred = [['官方发布', official], ['媒体报道', cases.length - official]];
-    html += '<section class="section dashboard"><div class="section-head"><h2>数据看板</h2><span class="muted small">全部图表由 data/*.json 实时计算 · 悬停查看明细</span></div>' +
+    html += '<section class="band band-dark dash" aria-labelledby="dashTitle"><div class="dash-head"><div><div class="eyebrow">DATA DASHBOARD</div><h2 id="dashTitle">数据看板</h2>' +
+      '<p>全部指标与图表由站内数据文件（data/*.json）实时计算，悬停查看明细。</p></div></div>' +
       '<div class="kpis">' +
-      kpi(regions + ' / ' + countries, '覆盖地区 / 国家', '案例库') +
-      kpi(pct(cn, cases.length) + '%', '中国案例占比', cn + ' / ' + cases.length) +
-      kpi(pct(scaled, cases.length) + '%', '规模化及商业化', scaled + ' 个案例') +
-      kpi(pct(disclosed, cases.length) + '%', '量化效果披露率', '其余标注“未公开”') +
-      kpi(pct(official, cases.length) + '%', '官方发布来源', official + ' 个案例') +
-      kpi(recent, '近 90 天快讯', '截至 ' + updated) + '</div>' +
+      kpi(regions + '<span class="slash">/</span>' + countries, '', '覆盖地区 / 国家', '案例库覆盖范围', null) +
+      kpi(pct(scaled, cases.length), '%', '规模化及商业化', scaled + ' / ' + cases.length + ' 个案例', pct(scaled, cases.length)) +
+      kpi(pct(disclosed, cases.length), '%', '量化效果披露率', '其余标注“未公开”', pct(disclosed, cases.length)) +
+      kpi(pct(official, cases.length), '%', '官方发布来源', official + ' 个案例来自官方渠道', pct(official, cases.length)) + '</div>' +
       '<div class="dash-grid">' +
-      '<div class="card chart-card"><div class="cc-head"><h3>案例行业分布</h3><span class="muted small">Top 9 + 其他</span></div><div class="chart">' + hbar(byIndustry, { top: 10, w: 340, left: 78, unit: '个案例', label: '案例行业分布' }) + '</div></div>' +
-      '<div class="card chart-card"><div class="cc-head"><h3>案例地区分布</h3><span class="muted small">按地区</span></div><div class="chart">' + donutV2(byRegion, { center: '个案例', unit: '个案例', label: '案例地区分布' }) + '</div></div>' +
-      '<div class="card chart-card"><div class="cc-head"><h3>技术成熟度雷达</h3><span class="muted small">编辑评估 1–5</span></div><div class="chart">' + radarV2(topics) + '</div></div>' +
-      '<div class="card chart-card span2"><div class="cc-head"><h3>快讯月度趋势</h3><span class="muted small">按类别堆叠 · 共 ' + news.length + ' 条</span></div><div class="chart">' + stackedMonths(news, { label: '快讯月度趋势' }) + '</div></div>' +
-      '<div class="card chart-card"><div class="cc-head"><h3>案例成熟度与可信等级</h3></div><div class="chart">' +
-      propBars([{ title: '成熟度', unit: '个案例', rows: byMat, colors: MAT_COLOR }, { title: '可信等级', unit: '个案例', rows: byCred, colors: { '官方发布': '#12936b', '媒体报道': '#f0a24b' } }]) + '</div></div>' +
-      '<div class="card chart-card span2"><div class="cc-head"><h3>案例技术标签 Top 10</h3><span class="muted small">占案例比例 · 一个案例可含多个标签</span></div><div class="chart">' + hbar(byTech, { top: 10, w: 720, left: 104, unit: '个案例', total: cases.length, label: '技术标签', c1: '#7a4ad8', c2: '#1e5bd8' }) + '</div></div>' +
-      '<div class="card chart-card"><div class="cc-head"><h3>快讯地区分布</h3><span class="muted small">共 ' + news.length + ' 条</span></div><div class="chart">' + hbar(countBy(news, function (n) { return n.region; }), { top: 8, w: 340, left: 54, unit: '条快讯', label: '快讯地区分布', c1: '#0d8fae', c2: '#19b4e6' }) + '</div></div>' +
+      chartCard('chIndustry', '案例行业分布', 'Top 9 行业 + 其他 · 数值 / 占比', 'data/cases.json（industry）') +
+      chartCard('chRegion', '案例地区分布', '南丁格尔玫瑰图 · 半径表示案例数', 'data/cases.json（region）') +
+      chartCard('chTrend', '快讯月度趋势', '按类别堆叠 · 折线为月度合计', 'data/news.json（date、category）') +
+      chartCard('chRadar', '技术成熟度雷达', '编辑评估 1–5 分，仅供参考', 'data/topics.json（maturity_score）') +
       '</div></section>';
 
     app.innerHTML = html;
     document.getElementById('heroSearch').addEventListener('submit', function (e) {
       e.preventDefault(); location.hash = '#/cases' + buildQuery({ q: document.getElementById('heroQ').value.trim() });
+    });
+    loadECharts().then(function (echarts) {
+      if (!document.getElementById('chIndustry')) return;
+      disposeCharts();
+      CHARTS.push(chartIndustry(echarts, document.getElementById('chIndustry'), cases));
+      CHARTS.push(chartRegion(echarts, document.getElementById('chRegion'), cases));
+      CHARTS.push(chartTrend(echarts, document.getElementById('chTrend'), news));
+      CHARTS.push(chartRadar(echarts, document.getElementById('chRadar'), topics));
+    }).catch(function (err) {
+      [].forEach.call(document.querySelectorAll('.echart'), function (el) { el.innerHTML = '<div class="empty">' + esc(err.message) + '</div>'; });
     });
   }
   function pageNews(params) {
@@ -366,7 +360,7 @@
     if (!c) { app.innerHTML = '<div class="card empty">未找到该案例。<a href="#/cases">返回案例库</a></div>'; return; }
     var rows = [['企业 / 机构', esc(c.org)], ['地区', esc(c.region + ' · ' + c.country)], ['行业', esc(c.industry)], ['技术', c.tech.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join(' ')],
       ['应用场景', esc(c.scenario)], ['解决的问题', esc(c.problem)], ['实施方式', esc(c.approach)], ['效果', '<b>' + esc(c.effect) + '</b>'], ['时间', esc(c.date)],
-      ['成熟度', '<span class="tag mat">' + esc(c.maturity) + '</span>'], ['可信等级', cred(c.credibility)], ['来源链接', ext(c.source_url, c.source_name) + ((c.extra_sources || []).length ? '<div style="margin-top:4px">补充来源：' + c.extra_sources.map(function (x) { return ext(x.url, x.name); }).join('　') + '</div>' : '')]];
+      ['成熟度', '<span class="tag mat ' + matCls(c.maturity) + '">' + esc(c.maturity) + '</span>'], ['可信等级', cred(c.credibility)], ['来源链接', ext(c.source_url, c.source_name) + ((c.extra_sources || []).length ? '<div style="margin-top:4px">补充来源：' + c.extra_sources.map(function (x) { return ext(x.url, x.name); }).join('　') + '</div>' : '')]];
     var related = DATA.cases.filter(function (x) { return x.id !== c.id && (x.industry === c.industry || x.tech.some(function (t) { return c.tech.indexOf(t) >= 0; })); }).sort(function (a, b) { return (b.industry === c.industry) - (a.industry === c.industry); }).slice(0, 4);
     app.innerHTML = '<a class="backlink" href="#/cases">← 返回案例库</a>' +
       '<div class="detail-head"><div class="tags"><span class="tag">' + esc(c.industry) + '</span><span class="tag">' + esc(c.region) + '</span><span class="tag">' + esc(c.maturity) + '</span></div><h1>' + esc(c.title) + '</h1><div>' + esc(c.org) + ' · ' + esc(c.date) + '</div></div>' +
@@ -429,6 +423,7 @@
 
   /* ---------- router ---------- */
   function route() {
+    disposeCharts();
     var h = parseHash(), p = h.parts, name = p[0] || 'home';
     var routes = { home: pageHome, news: pageNews, tech: pageTech, cases: pageCases, institutions: pageInstitutions, regions: pageRegions, about: pageAbout };
     document.getElementById('nav').classList.remove('open');

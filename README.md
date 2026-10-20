@@ -1,6 +1,6 @@
 # AI+X 行业案例网（静态网站原型）
 
-全球 AI 技术进展 × 行业落地案例 × 机构与地区观察。纯静态站点：**HTML + CSS + 原生 JavaScript，无构建步骤、无后台、无外部 CDN**（不依赖 Google Fonts / googleapis 等国内无法访问的资源），可直接部署到任意静态托管服务。
+全球 AI 技术进展 × 行业落地案例 × 机构与地区观察。纯静态站点：**HTML + CSS + 原生 JavaScript，无构建步骤、无后台、无外部 CDN**（唯一第三方库 Apache ECharts 已本地打包）（不依赖 Google Fonts / googleapis 等国内无法访问的资源），可直接部署到任意静态托管服务。
 
 > ⚠️ 本站为原型，内容为**样例数据集**：每条内容都附原始来源链接；来源中未披露的量化效果一律标注为“未公开”。上线前请按需复核与扩充数据。
 
@@ -11,8 +11,9 @@ aix-site/
 ├── index.html              # 单页应用入口（hash 路由：#/home、#/cases、#/case/c01 …）
 ├── .nojekyll               # 让 GitHub Pages 原样发布所有文件
 ├── assets/
-│   ├── css/style.css       # 样式（浅色主题 + 深蓝科技色，响应式）
-│   ├── js/app.js           # 路由、渲染、筛选、SVG 图表（零依赖）
+│   ├── css/style.css       # 设计系统 v3（深墨蓝/电光蓝/琥珀，暗色首屏与看板，响应式）
+│   ├── js/app.js           # 路由、渲染、筛选、图表配置
+│   ├── vendor/echarts/     # Apache ECharts 5.6.0 本地副本（echarts.min.js + LICENSE + NOTICE，Apache-2.0）
 │   └── favicon.svg
 └── data/                   # 全部内容数据，可由自动采集任务直接覆盖更新
     ├── meta.json           # 站点信息与数据更新日期
@@ -27,7 +28,7 @@ aix-site/
 
 | 页面 | 地址 |
 | --- | --- |
-| 首页（今日要闻 + 热点技术 / 最新案例 / 数据看板：KPI 指标 + 7 张交互图表） | `#/home` |
+| 首页（今日要闻 + 热点技术 / 最新案例 / 数据看板：4 项 KPI + 4 张 ECharts 交互图表） | `#/home` |
 | AI 动态快讯（按类别、地区筛选） | `#/news`，如 `#/news?cat=政策法规&region=中国` |
 | 技术前沿 | `#/tech`，定位某专题：`#/tech?t=agent` |
 | 行业案例库（行业/地区/技术/成熟度/关键词） | `#/cases`，如 `#/cases?industry=金融&q=客服` |
@@ -156,6 +157,8 @@ python3 -m http.server 8080
 
 ## 四、技术说明
 
-- 零依赖：无框架、无构建、无外部字体/CDN；首页“数据看板”的 KPI 与图表（行业/地区/技术标签 Top-N+其他、月度堆叠柱图、成熟度与可信等级占比、技术成熟度雷达）均由 `data/*.json` 实时计算，手写 SVG 渲染，支持悬停提示与入场动画（尊重系统“减少动态效果”设置）。
+- 无框架、无构建、无外部字体/CDN：首页“数据看板”包含 4 项 KPI（覆盖地区/国家、规模化及商业化占比、量化效果披露率、官方发布来源占比）与 4 张图表（案例行业分布、案例地区分布、快讯月度趋势、技术成熟度雷达），全部由 `data/*.json` 实时计算。
+- 图表使用 **Apache ECharts 5.6.0**，文件位于 `assets/vendor/echarts/`（保留 Apache-2.0 `LICENSE` 与 `NOTICE`），仅在首页按需加载，运行时不访问任何 CDN；升级时替换 `echarts.min.js` 即可。
+- 设计系统：深墨蓝 + 电光蓝/青强调色 + 琥珀色高亮；系统中文字体（PingFang SC / Microsoft YaHei / Noto Sans CJK）；标签按快讯类别、行业、成熟度统一配色；暗色首屏/页头/看板与浅色内容区对比。
 - 兼容：现代浏览器（Chrome / Edge / Safari / Firefox / 微信内置浏览器）。
 - 所有外部链接以 `target="_blank" rel="noopener noreferrer"` 打开；渲染内容统一做 HTML 转义。
