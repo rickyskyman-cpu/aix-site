@@ -37,74 +37,165 @@
     return q ? '?' + q : '';
   }
 
-  /* ---------- charts (pure SVG) ---------- */
-  function barChart(rows, opt) {
+  /* ---------- charts v2 (hand-rolled SVG, no dependencies) ---------- */
+  var CH = ['#1e5bd8', '#19b4e6', '#7a4ad8', '#12936b', '#f0a24b', '#e0457b', '#0d8fae', '#9aa9c9'];
+  var CAT_COLOR = { '模型发布': '#1e5bd8', '产品更新': '#19b4e6', '融资并购': '#f0a24b', '政策法规': '#7a4ad8', '科研突破': '#12936b' };
+  var MAT_COLOR = { '研究验证': '#9aa9c9', '试点': '#19b4e6', '规模化': '#1e5bd8', '商业化': '#0b2a5b' };
+  var gid = 0;
+  function pct(a, b) { return b ? Math.round(a * 1000 / b) / 10 : 0; }
+  function topN(rows, n) {
+    if (rows.length <= n) return rows;
+    var head = rows.slice(0, n - 1), rest = rows.slice(n - 1).reduce(function (s, r) { return s + r[1]; }, 0);
+    return head.concat([['其他', rest, true]]);
+  }
+  function niceTicks(max, count) {
+    max = Math.max(max, 1);
+    var raw = max / (count || 4), mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), n = raw / mag;
+    var step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+    step = Math.max(1, Math.round(step));
+    var top = Math.ceil(max / step) * step, t = [];
+    for (var v = 0; v <= top; v += step) t.push(v);
+    return t;
+  }
+  function tipAttr(text) { return ' data-tip="' + esc(text) + '"'; }
+
+  // horizontal bars, sorted, top-N + 其他
+  function hbar(rows, opt) {
     opt = opt || {};
-    var w = 520, bh = 22, gap = 8, left = opt.left || 110, h = rows.length * (bh + gap) + 10;
-    var max = Math.max.apply(null, rows.map(function (r) { return r[1]; }).concat([1]));
-    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(opt.label || '') + '">';
+    var total = opt.total || rows.reduce(function (s, r) { return s + r[1]; }, 0);
+    rows = topN(rows, opt.top || 8);
+    var id = 'hb' + (++gid), w = opt.w || 460, left = opt.left || 92, right = 34, rh = 26, top = 6, plotW = w - left - right;
+    var h = top + rows.length * rh + 26;
+    var ticks = niceTicks(Math.max.apply(null, rows.map(function (r) { return r[1]; })), 4), max = ticks[ticks.length - 1];
+    var c1 = opt.c1 || '#1e5bd8', c2 = opt.c2 || '#19b4e6';
+    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(opt.label || '') + '">' +
+      '<defs><linearGradient id="' + id + '" x1="0" x2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs>';
+    ticks.forEach(function (t) {
+      var x = left + plotW * t / max;
+      s += '<line x1="' + x + '" y1="' + top + '" x2="' + x + '" y2="' + (h - 22) + '" class="grid"/>' +
+        '<text x="' + x + '" y="' + (h - 8) + '" text-anchor="middle" class="axis">' + t + '</text>';
+    });
     rows.forEach(function (r, i) {
-      var y = i * (bh + gap) + 4, bw = (w - left - 40) * r[1] / max;
-      s += '<text x="' + (left - 8) + '" y="' + (y + 15) + '" text-anchor="end" font-size="12.5" fill="#3b4763">' + esc(r[0]) + '</text>';
-      s += '<rect x="' + left + '" y="' + y + '" width="' + (w - left - 40) + '" height="' + bh + '" rx="5" fill="#eef2fa"/>';
-      s += '<rect x="' + left + '" y="' + y + '" width="' + Math.max(bw, 2) + '" height="' + bh + '" rx="5" fill="' + (opt.color || PALETTE[i % 3]) + '"/>';
-      s += '<text x="' + (left + bw + 6) + '" y="' + (y + 15) + '" font-size="12" fill="#16213a" font-weight="600">' + r[1] + '</text>';
-    });
-    return s + '</svg>';
-  }
-  function donut(rows, label) {
-    var total = rows.reduce(function (a, r) { return a + r[1]; }, 0) || 1;
-    var cx = 90, cy = 90, R = 78, r = 48, a0 = -Math.PI / 2, s = '<svg viewBox="0 0 180 180" role="img" aria-label="' + esc(label) + '" style="max-width:220px;margin:0 auto">';
-    rows.forEach(function (row, i) {
-      var a1 = a0 + 2 * Math.PI * row[1] / total;
-      if (rows.length === 1) a1 = a0 + 2 * Math.PI - 0.0001;
-      var large = a1 - a0 > Math.PI ? 1 : 0;
-      var p = function (rad, ang) { return (cx + rad * Math.cos(ang)).toFixed(2) + ' ' + (cy + rad * Math.sin(ang)).toFixed(2); };
-      s += '<path d="M' + p(R, a0) + ' A' + R + ' ' + R + ' 0 ' + large + ' 1 ' + p(R, a1) + ' L' + p(r, a1) + ' A' + r + ' ' + r + ' 0 ' + large + ' 0 ' + p(r, a0) + 'Z" fill="' + PALETTE[i % PALETTE.length] + '"><title>' + esc(row[0]) + '：' + row[1] + '</title></path>';
-      a0 = a1;
-    });
-    s += '<text x="90" y="88" text-anchor="middle" font-size="22" font-weight="700" fill="#0b2a5b">' + total + '</text><text x="90" y="106" text-anchor="middle" font-size="11" fill="#5b6782">' + esc(label) + '</text></svg>';
-    var lg = '<div class="legend">' + rows.map(function (row, i) { return '<span><i style="background:' + PALETTE[i % PALETTE.length] + '"></i>' + esc(row[0]) + ' ' + row[1] + '</span>'; }).join('') + '</div>';
-    return s + lg;
-  }
-  function monthColumns(items, label) {
-    var m = {};
-    items.forEach(function (n) { var k = n.date.slice(0, 7); m[k] = (m[k] || 0) + 1; });
-    var keys = Object.keys(m).sort();
-    if (!keys.length) return '';
-    // fill gaps between first and last month
-    var all = [], y = +keys[0].slice(0, 4), mo = +keys[0].slice(5, 7), last = keys[keys.length - 1];
-    while (true) { var k = y + '-' + (mo < 10 ? '0' : '') + mo; all.push(k); if (k >= last) break; mo++; if (mo > 12) { mo = 1; y++; } }
-    var w = 520, h = 170, pad = 26, bw = (w - pad * 2) / all.length, max = Math.max.apply(null, all.map(function (k) { return m[k] || 0; }).concat([1]));
-    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(label) + '">';
-    s += '<line x1="' + pad + '" y1="' + (h - 28) + '" x2="' + (w - pad) + '" y2="' + (h - 28) + '" stroke="#d6deee"/>';
-    all.forEach(function (k, i) {
-      var v = m[k] || 0, bh = (h - 60) * v / max, x = pad + i * bw + bw * 0.18, y = h - 28 - bh;
-      s += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (bw * 0.64).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="url(#gcol)"><title>' + k + '：' + v + ' 条</title></rect>';
-      if (v) s += '<text x="' + (x + bw * 0.32).toFixed(1) + '" y="' + (y - 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" fill="#0b2a5b">' + v + '</text>';
-      if (all.length <= 14 || i % 2 === 0) s += '<text x="' + (x + bw * 0.32).toFixed(1) + '" y="' + (h - 12) + '" text-anchor="middle" font-size="9.5" fill="#5b6782">' + k.slice(2).replace('-', '.') + '</text>';
-    });
-    s += '<defs><linearGradient id="gcol" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f7bff"/><stop offset="1" stop-color="#19b4e6"/></linearGradient></defs></svg>';
-    return s;
-  }
-  function radar(topics) {
-    var n = topics.length, cx = 170, cy = 150, R = 105, s = '<svg viewBox="0 0 340 300" role="img" aria-label="技术成熟度雷达图">';
-    function pt(i, v) { var a = -Math.PI / 2 + 2 * Math.PI * i / n; return [cx + R * v * Math.cos(a), cy + R * v * Math.sin(a)]; }
-    for (var lv = 1; lv <= 5; lv++) {
-      var ring = []; for (var i = 0; i < n; i++) ring.push(pt(i, lv / 5).map(function (x) { return x.toFixed(1); }).join(','));
-      s += '<polygon points="' + ring.join(' ') + '" fill="none" stroke="#e1e7f3"/>';
-    }
-    var poly = topics.map(function (t, i) { return pt(i, (t.maturity_score || 0) / 5).map(function (x) { return x.toFixed(1); }).join(','); });
-    s += '<polygon points="' + poly.join(' ') + '" fill="rgba(30,91,216,.18)" stroke="#1e5bd8" stroke-width="2"/>';
-    topics.forEach(function (t, i) {
-      var p = pt(i, 1.18), anchor = Math.abs(p[0] - cx) < 10 ? 'middle' : (p[0] > cx ? 'start' : 'end');
-      s += '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '" font-size="11" fill="#3b4763">' + esc(t.name.replace(/（.*?）/, '')) + '</text>';
-      var d = pt(i, (t.maturity_score || 0) / 5);
-      s += '<circle cx="' + d[0].toFixed(1) + '" cy="' + d[1].toFixed(1) + '" r="3.5" fill="#1e5bd8"/>';
+      var y = top + i * rh, bw = Math.max(plotW * r[1] / max, 3), share = pct(r[1], total);
+      s += '<text x="' + (left - 8) + '" y="' + (y + 16) + '" text-anchor="end" class="lbl">' + esc(r[0]) + '</text>' +
+        '<g' + tipAttr(r[0] + '：' + r[1] + ' ' + (opt.unit || '') + '（' + share + '%）' + (r[2] ? '，合并长尾' : '')) + '>' +
+        '<rect x="' + left + '" y="' + (y + 4) + '" width="' + plotW + '" height="' + (rh - 9) + '" rx="5" class="track"/>' +
+        '<rect class="bar-anim" style="animation-delay:' + (i * 40) + 'ms" x="' + left + '" y="' + (y + 4) + '" width="' + bw.toFixed(1) + '" height="' + (rh - 9) + '" rx="5" fill="' + (r[2] ? '#c3cde3' : 'url(#' + id + ')') + '"/></g>' +
+        '<text x="' + (left + bw + 6).toFixed(1) + '" y="' + (y + 16) + '" class="val">' + r[1] + '</text>';
     });
     return s + '</svg>';
   }
 
+  // donut with center total + legend (with %)
+  function donutV2(rows, opt) {
+    opt = opt || {};
+    rows = topN(rows, opt.top || 7);
+    var total = rows.reduce(function (s, r) { return s + r[1]; }, 0) || 1;
+    var R = 62, C = 2 * Math.PI * R, off = 0;
+    var s = '<svg viewBox="0 0 170 170" class="donut" role="img" aria-label="' + esc(opt.label || '') + '"><g transform="rotate(-90 85 85)">' +
+      '<circle cx="85" cy="85" r="' + R + '" fill="none" stroke="#eef2fa" stroke-width="22"/>';
+    rows.forEach(function (r, i) {
+      var len = C * r[1] / total, col = r[2] ? '#c3cde3' : CH[i % CH.length];
+      s += '<circle class="seg" style="animation-delay:' + (i * 60) + 'ms" cx="85" cy="85" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="22" stroke-dasharray="' + Math.max(len - 1.5, 0.5).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"' +
+        tipAttr(r[0] + '：' + r[1] + ' ' + (opt.unit || '') + '（' + pct(r[1], total) + '%）') + '/>';
+      off += len;
+    });
+    s += '</g><text x="85" y="84" text-anchor="middle" class="d-total">' + total + '</text><text x="85" y="103" text-anchor="middle" class="axis">' + esc(opt.center || '') + '</text></svg>';
+    var lg = '<ul class="d-legend">' + rows.map(function (r, i) {
+      return '<li' + tipAttr(r[0] + '：' + r[1] + '（' + pct(r[1], total) + '%）') + '><i style="background:' + (r[2] ? '#c3cde3' : CH[i % CH.length]) + '"></i><span>' + esc(r[0]) + '</span><b>' + r[1] + '</b><em>' + pct(r[1], total) + '%</em></li>';
+    }).join('') + '</ul>';
+    return '<div class="donut-wrap">' + s + lg + '</div>';
+  }
+
+  // stacked monthly columns by news category
+  function stackedMonths(items, opt) {
+    opt = opt || {};
+    var m = {}, cats = Object.keys(CAT_COLOR);
+    items.forEach(function (n) { var k = n.date.slice(0, 7); m[k] = m[k] || {}; m[k][n.category] = (m[k][n.category] || 0) + 1; if (cats.indexOf(n.category) < 0) cats.push(n.category); });
+    var keys = Object.keys(m).sort(); if (!keys.length) return '';
+    var all = [], y = +keys[0].slice(0, 4), mo = +keys[0].slice(5, 7), last = keys[keys.length - 1];
+    while (true) { var k = y + '-' + (mo < 10 ? '0' : '') + mo; all.push(k); if (k >= last || all.length > 60) break; mo++; if (mo > 12) { mo = 1; y++; } }
+    var totals = all.map(function (k) { var t = 0; for (var c in (m[k] || {})) t += m[k][c]; return t; });
+    var ticks = niceTicks(Math.max.apply(null, totals), 4), max = ticks[ticks.length - 1];
+    var w = 520, h = 200, left = 28, right = 8, top = 14, bottom = 26, plotH = h - top - bottom, plotW = w - left - right, bw = plotW / all.length;
+    var s = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + esc(opt.label || '') + '">';
+    ticks.forEach(function (t) {
+      var yy = top + plotH - plotH * t / max;
+      s += '<line x1="' + left + '" y1="' + yy + '" x2="' + (w - right) + '" y2="' + yy + '" class="grid"/><text x="' + (left - 6) + '" y="' + (yy + 3.5) + '" text-anchor="end" class="axis">' + t + '</text>';
+    });
+    all.forEach(function (k, i) {
+      var x = left + i * bw + bw * 0.2, cw = bw * 0.6, acc = 0, d = m[k] || {};
+      s += '<g class="col-anim" style="animation-delay:' + (i * 30) + 'ms">';
+      cats.forEach(function (c) {
+        if (!d[c]) return;
+        var hh = plotH * d[c] / max, yy = top + plotH - plotH * (acc + d[c]) / max;
+        s += '<rect x="' + x.toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + Math.max(hh - 1, 1).toFixed(1) + '" rx="2.5" fill="' + (CAT_COLOR[c] || '#9aa9c9') + '"' + tipAttr(k + ' · ' + c + '：' + d[c] + ' 条（当月共 ' + totals[i] + ' 条）') + '/>';
+        acc += d[c];
+      });
+      s += '</g>';
+      if (totals[i]) s += '<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (top + plotH - plotH * totals[i] / max - 4).toFixed(1) + '" text-anchor="middle" class="val sm">' + totals[i] + '</text>';
+      var every = all.length > 12 ? 2 : 1;
+      if (i % every === 0 || i === all.length - 1) s += '<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (h - 9) + '" text-anchor="middle" class="axis">' + k.slice(2).replace('-', '.') + '</text>';
+    });
+    s += '<line x1="' + left + '" y1="' + (top + plotH) + '" x2="' + (w - right) + '" y2="' + (top + plotH) + '" class="axis-line"/></svg>';
+    var lg = '<div class="legend">' + cats.filter(function (c) { return items.some(function (n) { return n.category === c; }); }).map(function (c) {
+      return '<span><i style="background:' + (CAT_COLOR[c] || '#9aa9c9') + '"></i>' + esc(c) + ' ' + items.filter(function (n) { return n.category === c; }).length + '</span>';
+    }).join('') + '</div>';
+    return s + lg;
+  }
+
+  // 100% stacked proportion bars
+  function propBars(groups) {
+    return groups.map(function (g) {
+      var total = g.rows.reduce(function (s, r) { return s + r[1]; }, 0) || 1;
+      return '<div class="prop"><div class="prop-head"><span>' + esc(g.title) + '</span><span class="muted">' + total + ' ' + esc(g.unit || '') + '</span></div><div class="prop-bar">' +
+        g.rows.filter(function (r) { return r[1]; }).map(function (r, i) {
+          var p = pct(r[1], total);
+          return '<span class="prop-seg" style="width:' + p + '%;background:' + (g.colors[r[0]] || CH[i % CH.length]) + ';animation-delay:' + (i * 80) + 'ms"' + tipAttr(g.title + ' · ' + r[0] + '：' + r[1] + '（' + p + '%）') + '>' + (p >= 12 ? p + '%' : '') + '</span>';
+        }).join('') + '</div><div class="legend">' + g.rows.map(function (r, i) {
+          return '<span><i style="background:' + (g.colors[r[0]] || CH[i % CH.length]) + '"></i>' + esc(r[0]) + ' ' + r[1] + '</span>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  function radarV2(topics) {
+    var n = topics.length, cx = 210, cy = 142, R = 100, id = 'rd' + (++gid);
+    var s = '<svg viewBox="0 0 420 290" role="img" aria-label="技术成熟度雷达图"><defs><radialGradient id="' + id + '"><stop offset="0" stop-color="#19b4e6" stop-opacity=".45"/><stop offset="1" stop-color="#1e5bd8" stop-opacity=".22"/></radialGradient></defs>';
+    function pt(i, v) { var a = -Math.PI / 2 + 2 * Math.PI * i / n; return [cx + R * v * Math.cos(a), cy + R * v * Math.sin(a)]; }
+    for (var lv = 1; lv <= 5; lv++) {
+      var ring = []; for (var i = 0; i < n; i++) ring.push(pt(i, lv / 5).map(function (x) { return x.toFixed(1); }).join(','));
+      s += '<polygon points="' + ring.join(' ') + '" fill="' + (lv % 2 ? '#f7f9fd' : '#fff') + '" stroke="#e1e7f3"/>';
+    }
+    for (var j = 0; j < n; j++) { var e = pt(j, 1); s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0].toFixed(1) + '" y2="' + e[1].toFixed(1) + '" stroke="#e1e7f3"/>'; }
+    for (var l = 1; l <= 5; l++) s += '<text x="' + (cx + 3) + '" y="' + (cy - R * l / 5 + 3) + '" class="axis sm">' + l + '</text>';
+    var poly = topics.map(function (t, i) { return pt(i, (t.maturity_score || 0) / 5).map(function (x) { return x.toFixed(1); }).join(','); });
+    s += '<polygon class="radar-anim" points="' + poly.join(' ') + '" fill="url(#' + id + ')" stroke="#1e5bd8" stroke-width="2" stroke-linejoin="round"/>';
+    topics.forEach(function (t, i) {
+      var p = pt(i, 1.17), anchor = Math.abs(p[0] - cx) < 12 ? 'middle' : (p[0] > cx ? 'start' : 'end');
+      s += '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 4).toFixed(1) + '" text-anchor="' + anchor + '" class="lbl">' + esc(t.name.replace(/（.*?）/, '')) + '</text>';
+      var d = pt(i, (t.maturity_score || 0) / 5);
+      s += '<circle cx="' + d[0].toFixed(1) + '" cy="' + d[1].toFixed(1) + '" r="4.5" fill="#fff" stroke="#1e5bd8" stroke-width="2"' + tipAttr(t.name + '：' + t.maturity + '（' + t.maturity_score + '/5，编辑评估）') + '/>';
+    });
+    return s + '</svg>';
+  }
+
+  function initTooltip() {
+    var tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip);
+    function show(el, x, y) { tip.textContent = el.getAttribute('data-tip'); tip.style.opacity = 1; move(x, y); }
+    function move(x, y) {
+      var w = tip.offsetWidth, vw = document.documentElement.clientWidth;
+      tip.style.left = Math.min(Math.max(8, x - w / 2), vw - w - 8) + 'px'; tip.style.top = (y - tip.offsetHeight - 12) + 'px';
+    }
+    document.addEventListener('mousemove', function (e) {
+      var el = e.target.closest && e.target.closest('[data-tip]');
+      if (el) show(el, e.clientX, e.clientY); else tip.style.opacity = 0;
+    });
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest && e.target.closest('[data-tip]');
+      if (el) show(el, e.clientX, e.clientY); else tip.style.opacity = 0;
+    });
+    window.addEventListener('scroll', function () { tip.style.opacity = 0; }, { passive: true });
+  }
   /* ---------- components ---------- */
   function newsItem(n) {
     return '<div class="news-item"><div class="date">' + esc(n.date) + '</div><div>' +
@@ -126,34 +217,81 @@
 
   /* ---------- pages ---------- */
   function pageHome() {
-    var cases = DATA.cases, news = DATA.news;
-    var latestCases = cases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).slice(0, 6);
-    var html = '<section class="hero"><h1>全球 AI 进展 × 行业落地案例情报站</h1>' +
-      '<p>回答“哪项 AI 技术、在哪个地区、哪个行业、被谁、怎么用、效果如何”。每条内容均附原始来源，区分官方发布与媒体报道。</p>' +
-      '<form class="hero-search" id="heroSearch"><input id="heroQ" placeholder="搜索案例：如 金融 客服、自动驾驶、DeepSeek、病理…" aria-label="搜索案例"><button class="btn" type="submit">搜索案例库</button></form>' +
-      '<div class="stats"><div class="stat"><b>' + cases.length + '</b><span>行业案例</span></div><div class="stat"><b>' + news.length + '</b><span>动态快讯</span></div>' +
-      '<div class="stat"><b>' + DATA.institutions.length + '</b><span>机构与高校</span></div><div class="stat"><b>' + uniq(cases.map(function (c) { return c.industry; })).length + '</b><span>覆盖行业</span></div></div></section>';
+    var cases = DATA.cases, news = DATA.news, topics = DATA.topics;
+    var latestCases = cases.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).slice(0, 8);
+    var industries = uniq(cases.map(function (c) { return c.industry; })).length;
+    var updated = (DATA.meta && DATA.meta.updated) || news[0].date;
 
-    html += '<div class="split section"><section class="card"><div class="section-head"><h2>今日要闻</h2><a href="#/news">全部快讯 →</a></div>' +
-      news.slice(0, 6).map(newsItem).join('') + '</section>' +
-      '<section><div class="card"><div class="section-head"><h2>热点技术</h2><a href="#/tech">技术前沿 →</a></div><div class="tags">' +
-      DATA.topics.map(function (t) { return '<a class="tag" href="#/tech?t=' + esc(t.id) + '">' + esc(t.name) + '</a>'; }).join('') + '</div>' +
-      '<div class="chart">' + radar(DATA.topics) + '</div><p class="muted" style="font-size:12.5px;margin:0">成熟度为编辑评估（1–5），仅供参考。</p></div></section></div>';
+    // KPIs (all derived from data/*.json)
+    var countries = uniq(cases.map(function (c) { return c.country; })).length;
+    var regions = uniq(cases.map(function (c) { return c.region; })).length;
+    var official = cases.filter(function (c) { return c.credibility === '官方发布'; }).length;
+    var disclosed = cases.filter(function (c) { return c.effect && c.effect !== '未公开'; }).length;
+    var scaled = cases.filter(function (c) { return c.maturity === '规模化' || c.maturity === '商业化'; }).length;
+    var cn = cases.filter(function (c) { return c.region === '中国'; }).length;
+    var d0 = new Date(updated + 'T00:00:00Z'), recent = news.filter(function (n) { return (d0 - new Date(n.date + 'T00:00:00Z')) / 864e5 <= 90; }).length;
+    function kpi(v, label, sub) { return '<div class="kpi"><b>' + v + '</b><span>' + esc(label) + '</span>' + (sub ? '<em>' + esc(sub) + '</em>' : '') + '</div>'; }
 
-    html += '<section class="section"><div class="section-head"><h2>最新案例</h2><a href="#/cases">进入案例库 →</a></div><div class="grid g3">' + latestCases.map(caseCard).join('') + '</div></section>';
+    var html = '<section class="hero hero-v2"><div class="hero-main"><div class="eyebrow">全球 AI 情报 · 数据更新于 ' + esc(updated) + '</div>' +
+      '<h1>全球 AI 进展 × 行业落地案例情报站</h1>' +
+      '<p>回答“哪项 AI 技术、在哪个地区、哪个行业、被谁、怎么用、效果如何”。每条内容均附原始来源。</p>' +
+      '<form class="hero-search" id="heroSearch"><input id="heroQ" placeholder="搜索案例：金融 客服、自动驾驶、DeepSeek、病理…" aria-label="搜索案例"><button class="btn" type="submit">搜索</button></form></div>' +
+      '<div class="hero-stats">' +
+      '<a class="stat" href="#/cases"><b>' + cases.length + '</b><span>行业案例</span></a>' +
+      '<a class="stat" href="#/news"><b>' + news.length + '</b><span>动态快讯</span></a>' +
+      '<a class="stat" href="#/institutions"><b>' + DATA.institutions.length + '</b><span>机构与高校</span></a>' +
+      '<a class="stat" href="#/cases"><b>' + industries + '</b><span>覆盖行业</span></a></div></section>';
 
-    html += '<section class="section"><div class="section-head"><h2>趋势图表</h2><span class="muted" style="font-size:13px">基于本站样例数据自动生成</span></div><div class="grid g2">' +
-      '<div class="card chart-card"><h3>案例行业分布</h3><div class="chart">' + barChart(countBy(cases, function (c) { return c.industry; }), { label: '案例行业分布' }) + '</div></div>' +
-      '<div class="card chart-card"><h3>案例地区分布</h3><div class="chart">' + donut(countBy(cases, function (c) { return c.region; }), '个案例') + '</div></div>' +
-      '<div class="card chart-card"><h3>快讯月度数量</h3><div class="chart">' + monthColumns(news, '快讯月度数量') + '</div></div>' +
-      '<div class="card chart-card"><h3>案例技术标签 Top 8</h3><div class="chart">' + barChart(countBy(cases, function (c) { return c.tech; }).slice(0, 8), { label: '技术标签', color: '#19b4e6' }) + '</div></div>' +
+    // 今日要闻 + 热点技术
+    html += '<div class="home-row section"><section class="card pad-sm"><div class="section-head"><h2>今日要闻</h2><a href="#/news">全部快讯 →</a></div><ul class="news-compact">' +
+      news.slice(0, 7).map(function (n) {
+        return '<li><span class="nc-date">' + esc(n.date.slice(5)) + '</span><div class="nc-body"><a class="nc-title" href="' + safeUrl(n.source_url) + '" target="_blank" rel="noopener noreferrer" title="' + esc(n.summary) + '">' + esc(n.title) + '</a>' +
+          '<div class="nc-meta"><span class="dot" style="background:' + (CAT_COLOR[n.category] || '#9aa9c9') + '"></span>' + esc(n.category) + ' · ' + esc(n.region) + ' · ' + esc(n.source_name) + ' ' + cred(n.credibility) + '</div></div></li>';
+      }).join('') + '</ul></section>' +
+      '<section class="card pad-sm"><div class="section-head"><h2>热点技术</h2><a href="#/tech">技术前沿 →</a></div><ul class="topic-compact">' +
+      topics.map(function (t) {
+        var m = ''; for (var i = 1; i <= 5; i++) m += '<i class="' + (i <= t.maturity_score ? 'on' : '') + '"></i>';
+        return '<li><a href="#/tech?t=' + esc(t.id) + '"><span class="tc-name">' + esc(t.name) + '</span><span class="tc-what">' + esc(t.what) + '</span></a><span class="tc-mat"' + tipAttr('成熟度（编辑评估）：' + t.maturity + ' ' + t.maturity_score + '/5') + '><span class="meter">' + m + '</span><em>' + esc(t.maturity) + '</em></span></li>';
+      }).join('') + '</ul></section></div>';
+
+    // 最新案例
+    html += '<section class="section"><div class="section-head"><h2>最新案例</h2><a href="#/cases">进入案例库（' + cases.length + '）→</a></div><div class="grid g4 case-compact">' +
+      latestCases.map(function (c) {
+        return '<a class="card hover cc" href="#/case/' + esc(c.id) + '"><div class="tags"><span class="tag cat">' + esc(c.industry) + '</span><span class="tag region">' + esc(c.region) + '</span></div>' +
+          '<h3>' + esc(c.title) + '</h3><div class="cc-org">' + esc(c.org) + ' · ' + esc(c.date) + '</div>' +
+          '<p class="cc-effect">' + esc(c.effect) + '</p><div class="cc-foot">' + cred(c.credibility) + '<span class="tag mat">' + esc(c.maturity) + '</span></div></a>';
+      }).join('') + '</div></section>';
+
+    // 数据看板
+    var byIndustry = countBy(cases, function (c) { return c.industry; });
+    var byRegion = countBy(cases, function (c) { return c.region; });
+    var byTech = countBy(cases, function (c) { return c.tech; });
+    var byMat = MATURITY_ORDER.map(function (m) { return [m, cases.filter(function (c) { return c.maturity === m; }).length]; });
+    var byCred = [['官方发布', official], ['媒体报道', cases.length - official]];
+    html += '<section class="section dashboard"><div class="section-head"><h2>数据看板</h2><span class="muted small">全部图表由 data/*.json 实时计算 · 悬停查看明细</span></div>' +
+      '<div class="kpis">' +
+      kpi(regions + ' / ' + countries, '覆盖地区 / 国家', '案例库') +
+      kpi(pct(cn, cases.length) + '%', '中国案例占比', cn + ' / ' + cases.length) +
+      kpi(pct(scaled, cases.length) + '%', '规模化及商业化', scaled + ' 个案例') +
+      kpi(pct(disclosed, cases.length) + '%', '量化效果披露率', '其余标注“未公开”') +
+      kpi(pct(official, cases.length) + '%', '官方发布来源', official + ' 个案例') +
+      kpi(recent, '近 90 天快讯', '截至 ' + updated) + '</div>' +
+      '<div class="dash-grid">' +
+      '<div class="card chart-card"><div class="cc-head"><h3>案例行业分布</h3><span class="muted small">Top 9 + 其他</span></div><div class="chart">' + hbar(byIndustry, { top: 10, w: 340, left: 78, unit: '个案例', label: '案例行业分布' }) + '</div></div>' +
+      '<div class="card chart-card"><div class="cc-head"><h3>案例地区分布</h3><span class="muted small">按地区</span></div><div class="chart">' + donutV2(byRegion, { center: '个案例', unit: '个案例', label: '案例地区分布' }) + '</div></div>' +
+      '<div class="card chart-card"><div class="cc-head"><h3>技术成熟度雷达</h3><span class="muted small">编辑评估 1–5</span></div><div class="chart">' + radarV2(topics) + '</div></div>' +
+      '<div class="card chart-card span2"><div class="cc-head"><h3>快讯月度趋势</h3><span class="muted small">按类别堆叠 · 共 ' + news.length + ' 条</span></div><div class="chart">' + stackedMonths(news, { label: '快讯月度趋势' }) + '</div></div>' +
+      '<div class="card chart-card"><div class="cc-head"><h3>案例成熟度与可信等级</h3></div><div class="chart">' +
+      propBars([{ title: '成熟度', unit: '个案例', rows: byMat, colors: MAT_COLOR }, { title: '可信等级', unit: '个案例', rows: byCred, colors: { '官方发布': '#12936b', '媒体报道': '#f0a24b' } }]) + '</div></div>' +
+      '<div class="card chart-card span2"><div class="cc-head"><h3>案例技术标签 Top 10</h3><span class="muted small">占案例比例 · 一个案例可含多个标签</span></div><div class="chart">' + hbar(byTech, { top: 10, w: 720, left: 104, unit: '个案例', total: cases.length, label: '技术标签', c1: '#7a4ad8', c2: '#1e5bd8' }) + '</div></div>' +
+      '<div class="card chart-card"><div class="cc-head"><h3>快讯地区分布</h3><span class="muted small">共 ' + news.length + ' 条</span></div><div class="chart">' + hbar(countBy(news, function (n) { return n.region; }), { top: 8, w: 340, left: 54, unit: '条快讯', label: '快讯地区分布', c1: '#0d8fae', c2: '#19b4e6' }) + '</div></div>' +
       '</div></section>';
+
     app.innerHTML = html;
     document.getElementById('heroSearch').addEventListener('submit', function (e) {
       e.preventDefault(); location.hash = '#/cases' + buildQuery({ q: document.getElementById('heroQ').value.trim() });
     });
   }
-
   function pageNews(params) {
     var cats = ['全部'].concat(uniq(DATA.news.map(function (n) { return n.category; })));
     var regions = ['全部地区'].concat(uniq(DATA.news.map(function (n) { return n.region; })));
@@ -304,6 +442,7 @@
 
   function boot() {
     document.getElementById('year').textContent = new Date().getFullYear();
+    initTooltip();
     var tg = document.getElementById('navToggle');
     tg.onclick = function () { var n = document.getElementById('nav'); n.classList.toggle('open'); tg.setAttribute('aria-expanded', n.classList.contains('open')); };
     Promise.all(FILES.map(function (f) {
